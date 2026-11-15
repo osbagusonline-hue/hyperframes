@@ -584,6 +584,7 @@ export interface RenderOptions {
   bestEffort?: boolean;
   browserPath?: string;
   variables?: Record<string, unknown>;
+  strictVariables?: boolean;
   entryFile?: string;
   exitAfterComplete?: boolean;
   embedded?: boolean;
@@ -920,6 +921,7 @@ async function renderDocker(
       pageSideCompositing: options.pageSideCompositing,
       debug: options.debug,
       bestEffort: options.bestEffort,
+      strictVariables: options.strictVariables,
       experimentalFastCapture: options.experimentalFastCapture,
       pageNavigationTimeoutMs: options.pageNavigationTimeoutMs,
       protocolTimeoutMs: options.protocolTimeout,
@@ -1208,6 +1210,7 @@ async function executeLocalRender(
       chromaSubsampling: options.chromaSubsampling,
       pageMotionBlur: options.pageMotionBlur,
       variables: options.variables,
+      strictVariables: options.strictVariables,
       entryFile: options.entryFile,
       outputResolution: options.outputResolution,
       outputResolutionAspectAgnostic: options.outputResolutionAspectAgnostic,
