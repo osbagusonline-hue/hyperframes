@@ -114,6 +114,7 @@ function urlScheme(url: string): string | undefined {
 
 export interface StudioApiOptions extends CaptureSandboxOption {
   allowedHosts?: readonly string[];
+  subCompositionDeadlineMs?: number;
 }
 
 export function createStudioApi(adapter: StudioApiAdapter, options: StudioApiOptions = {}): Hono {
@@ -213,7 +214,10 @@ export function createStudioApi(adapter: StudioApiAdapter, options: StudioApiOpt
 
   registerProjectRoutes(api, adapter);
   registerFileRoutes(api, adapter);
-  registerPreviewRoutes(api, adapter, { sandboxThumbnailCaptures });
+  registerPreviewRoutes(api, adapter, {
+    sandboxThumbnailCaptures,
+    subCompositionDeadlineMs: options.subCompositionDeadlineMs,
+  });
   registerLintRoutes(api, adapter);
   registerRenderRoutes(api, adapter);
   registerThumbnailRoutes(api, adapter);
