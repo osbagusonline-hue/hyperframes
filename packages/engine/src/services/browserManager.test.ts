@@ -1650,6 +1650,7 @@ describe("browser pool", () => {
   let launchFn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    vi.stubEnv("PRODUCER_HEADLESS_SHELL_PATH", process.execPath);
     _resetBrowserPoolForTests();
     const mockBrowser = makeMockBrowser();
     launchFn = vi.fn().mockResolvedValue(mockBrowser);
@@ -1659,6 +1660,7 @@ describe("browser pool", () => {
   afterEach(async () => {
     await drainBrowserPool();
     _setPuppeteerForTests(undefined);
+    vi.unstubAllEnvs();
   });
 
   it.each([undefined, "1"])(
