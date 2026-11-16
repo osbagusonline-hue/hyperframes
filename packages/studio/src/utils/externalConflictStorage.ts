@@ -22,6 +22,7 @@ export interface ExternalConflictStorage {
 const DB_NAME = "hyperframes-studio-external-conflicts";
 const DB_VERSION = 1;
 const STORE_NAME = "file-conflicts";
+const UNRESOLVED_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 function key(projectId: string, filePath: string): string {
   return `${projectId}\0${filePath}`;
@@ -161,7 +162,13 @@ export async function loadExternalConflictSnapshot(
   projectId: string,
   filePath: string,
 ): Promise<ExternalConflictSnapshot | null> {
-  return indexedDbStorage.get(projectId, filePath);
+  const record = await indexedDbStorage.get(projectId, filePath);
+  if (!record) return null;
+  const forThisKey = record.projectId === projectId && record.filePath === filePath;
+  if (forThisKey && Math.abs(Date.now() - record.createdAt) <= UNRESOLVED_DRAFT_MAX_AGE_MS)
+    return record;
+  await indexedDbStorage.delete(projectId, filePath).catch(() => undefined);
+  return null;
 }
 
 export async function deleteExternalConflictSnapshot(
