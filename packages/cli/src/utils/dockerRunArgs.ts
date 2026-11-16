@@ -79,6 +79,7 @@ export interface DockerRenderOptions {
   protocolTimeoutMs?: number;
   /** Player readiness timeout in milliseconds. */
   playerReadyTimeoutMs?: number;
+  provenance?: string | boolean;
 }
 
 /**
@@ -192,5 +193,6 @@ export function buildDockerRunArgs(input: DockerRunArgsInput): string[] {
     ...(options.playerReadyTimeoutMs != null
       ? ["--player-ready-timeout", String(options.playerReadyTimeoutMs)]
       : []),
+    ...(options.provenance === true ? ["--provenance"] : []),
   ];
 }
