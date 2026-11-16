@@ -20,7 +20,7 @@ import {
   buildAudioSidecar,
   buildProbeFacts,
   hashProjectDir,
-  listSiteFiles,
+  listSiteFilesForUpload,
   wantsAudioSidecar,
   wantsProbeFacts,
 } from "@hyperframes/producer/distributed";
@@ -156,7 +156,7 @@ export async function deploySite(opts: DeploySiteOptions): Promise<SiteHandle> {
   if (!statSync(opts.projectDir).isDirectory()) {
     throw new Error(`[deploySite] projectDir is not a directory: ${opts.projectDir}`);
   }
-  const files = listSiteFiles(opts.projectDir);
+  const files = listSiteFilesForUpload(opts.projectDir, opts.onNotice);
   const siteId = opts.siteId ?? hashProjectDir(opts.projectDir, files);
   const projectS3Uri = siteManifestUri(opts.bucketName, siteId);
 
