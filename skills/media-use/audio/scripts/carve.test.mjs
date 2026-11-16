@@ -1,17 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  DEFAULT_STRENGTH,
-  carveSources,
-  groupSourceRefusal,
-  loadCore,
-  parseArgs,
-} from "./carve.mjs";
+import { DEFAULT_STRENGTH, carveSources, groupSourceRefusal, parseArgs } from "./carve.mjs";
 
 const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url));
 
@@ -202,33 +196,53 @@ test("the CLI still runs when invoked through a symlinked path", () => {
   });
 });
 
-test("loadCore honours an import-only export map, as the published core has", () => {
-  // The published manifest carries only `import` + `types` for these subpaths, so
-  // `require.resolve` cannot resolve them at all and the fallback has to read the
-  // export map itself. A fixture pins that without depending on npm.
-  return inTempDir(async (dir) => {
-    const pkgDir = join(dir, "node_modules", "@hyperframes", "core");
-    mkdirSync(join(pkgDir, "dist"), { recursive: true });
-    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "fixture-project" }));
+test("carve uses its bundled core, not a @hyperframes/core in the project or a parent folder", () => {
+  return inTempDir((dir) => {
+    const marker = join(dir, "project-core-ran");
+    const installCore = (root) => {
+      const pkgDir = join(root, "node_modules", "@hyperframes", "core");
+      mkdirSync(pkgDir, { recursive: true });
+      const payload = `import { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(marker)}, "x");\n`;
+      writeFileSync(join(pkgDir, "index.mjs"), payload);
+      writeFileSync(
+        join(pkgDir, "package.json"),
+        JSON.stringify({
+          name: "@hyperframes/core",
+          type: "module",
+          main: "./index.mjs",
+          exports: {
+            ".": "./index.mjs",
+            "./package.json": "./package.json",
+            "./audio-carve": "./index.mjs",
+            "./audio-fx": "./index.mjs",
+          },
+        }),
+      );
+    };
+    const project = join(dir, "project");
+    mkdirSync(project);
+    installCore(dir);
+    installCore(project);
+    writeFileSync(join(project, "package.json"), JSON.stringify({ name: "received" }));
     writeFileSync(
-      join(pkgDir, "package.json"),
-      JSON.stringify({
-        name: "@hyperframes/core",
-        version: "0.0.0-fixture",
-        type: "module",
-        exports: {
-          "./package.json": "./package.json",
-          "./audio-carve": { import: "./dist/audioCarve.js" },
-          "./audio-fx": { import: "./dist/audioFx.js" },
-        },
-      }),
+      join(project, "index.html"),
+      '<audio id="music-bed" src="music-bed.wav" data-start="0"></audio>\n' +
+        '<audio id="narration" src="narration.wav" data-start="0"></audio>\n',
     );
-    writeFileSync(join(pkgDir, "dist", "audioCarve.js"), 'export const marker = "carve";\n');
-    writeFileSync(join(pkgDir, "dist", "audioFx.js"), 'export const marker = "fx";\n');
 
-    const core = await loadCore(dir);
-    assert.equal(core.carve.marker, "carve");
-    assert.equal(core.fx.marker, "fx");
+    let stdout = "";
+    try {
+      stdout = execFileSync(
+        process.execPath,
+        [join(SCRIPTS_DIR, "carve.mjs"), "--comp", "index.html", "--dry-run"],
+        { cwd: project, encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] },
+      );
+    } catch (error) {
+      // The audio files do not exist, so decoding fails; track detection runs first.
+      stdout = String(error.stdout);
+    }
+    assert.equal(existsSync(marker), false, "carve.mjs loaded the project's @hyperframes/core");
+    assert.match(stdout, /^bed\s+music-bed/m);
   });
 });
 
